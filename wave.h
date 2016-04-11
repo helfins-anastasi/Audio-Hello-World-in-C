@@ -26,7 +26,7 @@ typedef struct _wave_file {
 // Returns a file descriptor with WAVE metadata initialized, and offset pointing to the data section.
 // Size of data is initialized to zero; set the value at offset(40) to data size and offset(4) to 
 // data size + 36
-int makeWaveFile(char* filename);
+int makeWaveFile(char* filename, int dataSize);
 
 // Reads metadata from WAVE file; WaveFile.fd contains byte array containing the data.
 WaveFile readWaveFile(char* filename);

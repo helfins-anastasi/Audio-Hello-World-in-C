@@ -12,12 +12,18 @@ int main(int argc, char** argv) {
 	}
 
 	if(mode == 'w' || mode == 't') {
-		int waveFd = makeWaveFile(argv[2]);
+		int dataSize = 44100*2;
+		int waveFd = makeWaveFile(argv[2],dataSize/2);
+		int zero = 0, i = 0;
+		for(i = 0; i < dataSize - 4; i += 4) {
+			write(waveFd,&zero,4);
+		}
+		write(waveFd,&zero,dataSize-i);
 		close(waveFd);
 	}
 
 	if(mode == 'r' || mode == 't') {
-		WaveFile data = readWaveFile(argv[1]);
+		WaveFile data = readWaveFile(argv[2]);
 		printf("id: %s, size: %d, format: %s\n", data.chunkId, data.chunkSize, data.format);
 		printf("id: %s, size: %d, aFormat: %d, nChann: %d, sRate: %d, bRate: %d, bAlign: %d, bps: %d\n", data.subChunk1Id, data.subChunk1Size, data.audioFormat, data.numChannels, data.sampleRate, data.byteRate, data.blockAlign, data.bitsPerSample);
 		printf("id: %s, size: %d\n", data.subChunk2Id, data.subChunk2Size);
@@ -25,47 +31,42 @@ int main(int argc, char** argv) {
 
 }
 
-int makeWaveFile(char* filename) {
+int makeWaveFile(char* filename, int numSamples) {
 	int fd = open(filename, O_WRONLY | O_EXCL | O_CREAT, S_IRWXU);
 	if(fd < 0 && errno == 17) {
 		//File already exists
 		printf("File \"%s\" already exists.\n", filename);
 		return -1;
 	} else if(fd < 0) {
-		printf("Unknown error #%d\n", errno);
+		printf("Unknown write error #%d\n", errno);
 		return -1;
 	}
 	char chunkId[4] = {'R','I','F','F'};
-	write(fd,chunkId,4);
-	int dataSize = 0;
-	int size = 36 + dataSize;
-	write(fd,&size,4);
 	char format[4] = {'W','A','V','E'};
-	write(fd,format,4);
 	char chunkId1[4] = {'f','m','t',' '};
-	write(fd,chunkId1,4);
-	int sixteen = 16;
-	write(fd,&sixteen,4);
-	short audioFormat = 0x0001; // Linear pulse code modulation (see http://www.digitalpreservation.gov/formats/fdd/fdd000002.shtml)
-	write(fd,&audioFormat,2);
-	short numChannels = 1;
-	write(fd,&numChannels,2);
-	int sampleRate = 8000;
-	write(fd,&sampleRate,4);
-	int byteRate = 16000;
-	write(fd,&byteRate,4);
-	short blockAlign = 2;
-	write(fd,&blockAlign,2);
-	short bitsPerSample = 16;
-	write(fd,&bitsPerSample,2);
 	char chunkId2[4] = {'d','a','t','a'};
+	int fmtSize= 16;
+	short audioFormat = 0x0001; // Linear pulse code modulation (see http://www.digitalpreservation.gov/formats/fdd/fdd000002.shtml)
+	int sampleRate = 44100;
+	short numChannels = 1;
+	short bitsPerSample = 16;
+	short blockAlign = numChannels * bitsPerSample / 8;
+	int byteRate = sampleRate * blockAlign;
+	int dataSize = numSamples * blockAlign;
+	int size = 36 + dataSize;
+	write(fd,chunkId,4);
+	write(fd,&size,4);
+	write(fd,format,4);
+	write(fd,chunkId1,4);
+	write(fd,&fmtSize,4);
+	write(fd,&audioFormat,2);
+	write(fd,&numChannels,2);
+	write(fd,&sampleRate,4);
+	write(fd,&byteRate,4);
+	write(fd,&blockAlign,2);
+	write(fd,&bitsPerSample,2);
 	write(fd,&chunkId2,4);
 	write(fd,&dataSize,4);
-	int zero = 0, i = 0;
-	for(i = 0; i < dataSize - 4; i += 4) {
-		write(fd,&zero,4);
-	}
-	write(fd,&zero,dataSize-i);
 	return fd;
 }
 
@@ -73,7 +74,7 @@ WaveFile readWaveFile(char* filename) {
 	WaveFile result;
 	int fd = open(filename, O_RDONLY);
 	if(fd < 0) {
-		printf("Unknown error #%d\n", errno);
+		printf("Unknown read error #%d\n", errno);
 		exit(2);
 	}
 
