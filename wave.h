@@ -7,18 +7,18 @@
 #include <unistd.h>
 
 typedef struct _wave_file {
-	char chunkId[4];
+	char chunkId[5];
 	int chunkSize;
-	char format[4];
-	char subChunk1Id[4];
+	char format[5];
+	char subChunk1Id[5];
 	int subChunk1Size;
 	short int audioFormat;
 	short int numChannels;
 	int sampleRate;
 	int byteRate;
-	short int blockAssign;
+	short int blockAlign; // numChannels * (bitsPerSample / 8)
 	short int bitsPerSample;
-	char subChunk2Id[4];
+	char subChunk2Id[5];
 	int subChunk2Size;
 	char * data;
 } WaveFile;
