@@ -3,12 +3,12 @@
 
 int main(int argc, char** argv) {
 	if(argc < 3) {
-		printf("Usage: ./wave [r|w|t] filename\n");
+		printf("Usage: ./wave [r|w] filename\n");
 		exit(1);
 	}	
 	char mode = argv[1][0];
 	if(mode != 'r' && mode != 't' && mode != 'w') {
-		printf("Usage: ./wave [r|w|t] filename\n");
+		printf("Usage: ./wave [r|w] filename\n");
 		exit(4);
 	}
 
