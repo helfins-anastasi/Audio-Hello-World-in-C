@@ -12,7 +12,8 @@ int main(int argc, char** argv) {
 	}
 
 	if(mode == 'w' || mode == 't') {
-		int dataSize = 44100*2;
+		int duration = 1; // in seconds
+		int dataSize = 44100*2*duration;
 		int waveFd = makeWaveFile(argv[2],dataSize/2);
 		int zero = 0, i = 0;
 		for(i = 0; i < dataSize - 4; i += 4) {
