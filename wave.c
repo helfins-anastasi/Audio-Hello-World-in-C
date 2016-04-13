@@ -1,4 +1,5 @@
 #include "wave.h"
+#define MAX_AMP 8192
 
 int main(int argc, char** argv) {
 	if(argc < 3) {
@@ -12,14 +13,51 @@ int main(int argc, char** argv) {
 	}
 
 	if(mode == 'w' || mode == 't') {
-		int duration = 1; // in seconds
-		int dataSize = 44100*2*duration;
+		double noteDuration = .5; // in seconds
+		int numNotes = 32;
+		double duration = noteDuration * numNotes;
+		int dataSize = 2 * (int)(44100 * duration);
 		int waveFd = makeWaveFile(argv[2],dataSize/2);
-		int zero = 0, i = 0;
-		for(i = 0; i < dataSize - 4; i += 4) {
-			write(waveFd,&zero,4);
-		}
-		write(waveFd,&zero,dataSize-i);
+		writeSineWave(waveFd,noteDuration,261.626); // C
+		writeSineWave(waveFd,noteDuration,293.665); // D
+		writeSineWave(waveFd,noteDuration,329.628); // E
+		writeSineWave(waveFd,4.*noteDuration/5.,261.626); // C
+		writeSineWave(waveFd,noteDuration/5.,0); // Brief pause to separate C's
+		writeSineWave(waveFd,noteDuration,261.626); // C
+		writeSineWave(waveFd,noteDuration,293.665); // D
+		writeSineWave(waveFd,noteDuration,329.628); // E 
+		writeSineWave(waveFd,4.*noteDuration/5.,261.626); // C
+		writeSineWave(waveFd,noteDuration/5.,0); // Brief pause
+		writeSineWave(waveFd,noteDuration,329.628); // E
+		writeSineWave(waveFd,noteDuration,349.228); // F
+		writeSineWave(waveFd,3.*noteDuration/2.,391.995); // G
+		writeSineWave(waveFd,noteDuration/2.,0); // eighth rest
+		writeSineWave(waveFd,noteDuration,329.628); // E
+		writeSineWave(waveFd,noteDuration,349.228); // F
+		writeSineWave(waveFd,3.*noteDuration/2.,391.995); // G
+		writeSineWave(waveFd,noteDuration/2.,0); // eighth rest
+		writeSineWave(waveFd,noteDuration/2.,391.995); // G
+		writeSineWave(waveFd,noteDuration/2.,440.); // A
+		writeSineWave(waveFd,noteDuration/2.,391.995); // G
+		writeSineWave(waveFd,noteDuration/2.,349.228); // F
+		writeSineWave(waveFd,noteDuration,329.628); // E
+		writeSineWave(waveFd,4.*noteDuration/5.,261.626); // C
+		writeSineWave(waveFd,noteDuration/5.,0); // Brief pause
+		writeSineWave(waveFd,noteDuration/2.,391.995); // G
+		writeSineWave(waveFd,noteDuration/2.,440.); // A
+		writeSineWave(waveFd,noteDuration/2.,391.995); // G
+		writeSineWave(waveFd,noteDuration/2.,349.228); // F
+		writeSineWave(waveFd,noteDuration,329.628); // E
+		writeSineWave(waveFd,4.*noteDuration/5.,261.626); // C
+		writeSineWave(waveFd,noteDuration/5.,0); // Brief pause
+		writeSineWave(waveFd,noteDuration,261.626); // C
+		writeSineWave(waveFd,noteDuration,195.998); // G
+		writeSineWave(waveFd,noteDuration,261.626); // C
+		writeSineWave(waveFd,noteDuration,0); // quarter rest
+		writeSineWave(waveFd,noteDuration,261.626); // C
+		writeSineWave(waveFd,noteDuration,195.998); // G
+		writeSineWave(waveFd,noteDuration,261.626); // C
+		writeSineWave(waveFd,noteDuration,0); // quarter rest
 		close(waveFd);
 	}
 
@@ -28,6 +66,7 @@ int main(int argc, char** argv) {
 		printf("id: %s, size: %d, format: %s\n", data.chunkId, data.chunkSize, data.format);
 		printf("id: %s, size: %d, aFormat: %d, nChann: %d, sRate: %d, bRate: %d, bAlign: %d, bps: %d\n", data.subChunk1Id, data.subChunk1Size, data.audioFormat, data.numChannels, data.sampleRate, data.byteRate, data.blockAlign, data.bitsPerSample);
 		printf("id: %s, size: %d\n", data.subChunk2Id, data.subChunk2Size);
+		//readData(data.data, data.subChunk2Size);
 	}
 
 }
@@ -104,9 +143,28 @@ WaveFile readWaveFile(char* filename) {
 	read(fd,&result.subChunk2Id,4);
 	result.subChunk2Id[4] = 0;
 	read(fd,&result.subChunk2Size,4);
-	result.data = (char *)malloc(result.subChunk2Size);
-	read(fd,result.data,result.subChunk2Size);	
-
-	close(fd);
+	result.data = fd;
 	return result;
+}
+
+void writeSineWave(int waveFd, double duration, double frequency) {
+	int samples = (int)(44100 * duration);
+	short val = 0; 
+	int i = 0;
+	for(i = 0; i < samples; i++) {
+		val = z_sine(frequency, i);
+		write(waveFd,&val,2);
+	}
+}
+
+short int z_sine(double f, int t) {
+	return (short)(MAX_AMP * sin(2.*M_PI*f*(double)t/44100.) + 0.5);
+}
+
+void readData(int fd, int size) {
+	char a[2];
+	for(int i = 0; i < size; i += 2) {
+		read(fd, &a, 2);
+		printf("Little endian: %d, big endian: %d\n", a[0] + 256*a[1], a[1]+256*a[0]);
+	}
 }

@@ -11,7 +11,7 @@ $(TARGET): $(SRCS) $(HDRS) $(OBJS)
 	$(CC) -o $(TARGET) $(OBJS)
 
 %.o: %.c $(HDRS)
-	$(CXX) -o $@ -c $<
+	$(CC) -o $@ -c $<
 
 .PHONY: clean
 clean:

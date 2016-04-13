@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -20,7 +21,7 @@ typedef struct _wave_file {
 	short int bitsPerSample;
 	char subChunk2Id[5];
 	int subChunk2Size;
-	char * data;
+	int data; // file descriptor where offset is the beginning of the data
 } WaveFile;
 
 // Returns a file descriptor with WAVE metadata initialized, and offset pointing to the data section.
@@ -30,3 +31,11 @@ int makeWaveFile(char* filename, int dataSize);
 
 // Reads metadata from WAVE file; WaveFile.fd contains byte array containing the data.
 WaveFile readWaveFile(char* filename);
+
+void writeSineWave(int fd, double duration, double f);
+
+// 'f' is the frequency, 't' is the number of samples since the beginning of the file.
+short int z_sine(double f, int t);
+
+void readData(int fd, int size);
+
