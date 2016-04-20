@@ -35,7 +35,10 @@ WaveFile readWaveFile(char* filename);
 void writeSineWave(int fd, double duration, double f);
 
 // 'f' is the frequency, 't' is the number of samples since the beginning of the file.
-short int z_sine(double f, int t);
+short int z_sine(double f, int x, int totalSamples);
+
+short basicEnvelope(int t, int samples);
+short envelope(int t, int samples, double attack, double decay, double sustain, double release, double sustainPercent, int maximumAmplitude);
 
 void readData(int fd, int size);
 

@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
 		writeSineWave(waveFd,noteDuration,261.626); // C
 		writeSineWave(waveFd,noteDuration,0); // quarter rest
 		writeSineWave(waveFd,noteDuration,261.626); // C
-		writeSineWave(waveFd,noteDuration,195.998); // G
+		writeSineWave(waveFd,noteDuration,195.998); // low G
 		writeSineWave(waveFd,noteDuration,261.626); // C
 		writeSineWave(waveFd,noteDuration,0); // quarter rest
 		close(waveFd);
@@ -152,13 +152,44 @@ void writeSineWave(int waveFd, double duration, double frequency) {
 	short val = 0; 
 	int i = 0;
 	for(i = 0; i < samples; i++) {
-		val = z_sine(frequency, i);
+		val = z_sine(frequency, i, samples);
 		write(waveFd,&val,2);
 	}
 }
 
-short int z_sine(double f, int t) {
-	return (short)(MAX_AMP * sin(2.*M_PI*f*(double)t/44100.) + 0.5);
+short z_sine(double f, int x, int totalSamples) {
+	return (short)(basicEnvelope(x, totalSamples) * sin(2.*M_PI*f*(double)x/44100.) + 0.5);
+}
+
+short basicEnvelope(int t, int samples) {
+	return envelope(t,samples,.3,.2,.3,.2,.7,MAX_AMP);
+}
+
+// Sum of attack,decay,sustain,release should be 1, representing proportion of total time spent in each phase
+// sustainPercent should be less than or equal to 1
+// Maximum amplitude must be less than/equal to 2^15
+short envelope(int t, int samples, double attack, double decay, double sustain, double release, double sustainPercent, int maximumAmplitude) {
+	if(fabs(attack + decay + sustain + release - 1.) > 0.0000001) {
+		printf("Attack, Decay, Sustain, and release do not total 1. Error: %f\n", attack+decay+sustain+release-1.);
+		exit(5);
+	}
+
+	int aEnd = (int) (samples * attack);
+	int dEnd = aEnd + (int)(samples * decay);
+	int sEnd = dEnd + (int)(samples * sustain);
+	int sustainValue = maximumAmplitude * sustainPercent;
+	if(t < aEnd) {
+		double attackSlope = (double)maximumAmplitude / (double)aEnd;
+		return (short)(attackSlope * t);
+	} else if(t < dEnd) {
+		double decaySlope = (double)(sustainValue - maximumAmplitude) / (double)(dEnd - aEnd);
+		return maximumAmplitude + decaySlope * (t - aEnd);
+	} else if(t < sEnd) {
+		return sustainValue;
+	} else {
+		double releaseSlope = -(double)(sustainValue) / (double)(samples - sEnd);
+		return releaseSlope * (t - sEnd);
+	}
 }
 
 void readData(int fd, int size) {
