@@ -1,5 +1,6 @@
 #include "wave.h"
 #define MAX_AMP 8192
+#define CHUNK_SIZE 1048576
 
 int main(int argc, char** argv) {
 	if(argc < 3) {
@@ -7,9 +8,46 @@ int main(int argc, char** argv) {
 		exit(1);
 	}	
 	char mode = argv[1][0];
-	if(mode != 'r' && mode != 't' && mode != 'w') {
+	if(mode != 'r' && mode != 't' && mode != 'w' && mode != 'v') {
+		if(isdigit(mode)) {
+			long frequency = strtol(argv[1],NULL,10);
+			int waveFd = makeWaveFile(argv[2], 44100);
+			writeSineWave(waveFd,1,frequency);
+			close(waveFd);
+			exit(5);
+		}
 		printf("Usage: ./wave [r|w] filename\n");
 		exit(4);
+	}
+	
+	if(mode == 'v') {
+		WaveFile in = readWaveFile(argv[2]);
+		int val = argc > 3 ? atoi(argv[3]) : 4;
+		if(val == 0) val = 2;
+		printf("Val: %d\n", val);
+
+		char fileName[256];
+		int len = strlen(argv[2]);
+		strncpy(fileName, argv[2], len - 4);
+		strncpy(fileName + (len-4), "_reverse.wav", 12);
+		fileName[len+8] = 0;
+
+		int waveFd = makeWaveFile(fileName, in.subChunk2Size);
+		int numChunks = in.subChunk2Size / CHUNK_SIZE;
+		char data[CHUNK_SIZE+val];
+		memset(data + CHUNK_SIZE, 0, val);
+
+		for(int chunk = numChunks; chunk >= 0; chunk--) {
+			lseek(in.data, 44 + chunk * CHUNK_SIZE, SEEK_SET);
+			int count = read(in.data, data, CHUNK_SIZE);
+			write(waveFd, data + (count - count % val), count % val);
+			count -= count % val;
+			for(int i = count - val; i >= 0; i-=val) {
+				write(waveFd, data + i, val);
+			}
+		}
+		close(waveFd);
+		close(in.data);
 	}
 
 	if(mode == 'w' || mode == 't') {
@@ -66,7 +104,7 @@ int main(int argc, char** argv) {
 		printf("id: %s, size: %d, format: %s\n", data.chunkId, data.chunkSize, data.format);
 		printf("id: %s, size: %d, aFormat: %d, nChann: %d, sRate: %d, bRate: %d, bAlign: %d, bps: %d\n", data.subChunk1Id, data.subChunk1Size, data.audioFormat, data.numChannels, data.sampleRate, data.byteRate, data.blockAlign, data.bitsPerSample);
 		printf("id: %s, size: %d\n", data.subChunk2Id, data.subChunk2Size);
-		//readData(data.data, data.subChunk2Size);
+		//printData(data.data, data.subChunk2Size);
 	}
 
 }
@@ -158,7 +196,7 @@ void writeSineWave(int waveFd, double duration, double frequency) {
 }
 
 short z_sine(double f, int x, int totalSamples) {
-	return (short)(basicEnvelope(x, totalSamples) * sin(2.*M_PI*f*(double)x/44100.) + 0.5);
+	return (short)(MAX_AMP * sin(2.*M_PI*f*(double)x/44100.) + 0.5);
 }
 
 short basicEnvelope(int t, int samples) {
@@ -192,7 +230,7 @@ short envelope(int t, int samples, double attack, double decay, double sustain, 
 	}
 }
 
-void readData(int fd, int size) {
+void printData(int fd, int size) {
 	char a[2];
 	for(int i = 0; i < size; i += 2) {
 		read(fd, &a, 2);
